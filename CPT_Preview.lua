@@ -288,7 +288,11 @@ end
 local startRelPasteListen
 startRelPasteListen = function()
     if relTapConn then relTapConn:Disconnect(); relTapConn=nil end
-    relTapConn = UIS.InputBegan:Connect(function(input)
+    -- Small delay so the InputBegan that triggered activatePaste doesn't fire listener
+    task.wait(0.1)
+    if not S.pasteVisible then return end
+    relTapConn = UIS.InputBegan:Connect(function(input, gpe)
+        if gpe then return end  -- ignore clicks on GUI (HUD paste/cancel buttons)
         if not S.relativePaste or not S.pasteVisible then return end
         if input.UserInputType~=Enum.UserInputType.Touch and
            input.UserInputType~=Enum.UserInputType.MouseButton1 then return end
