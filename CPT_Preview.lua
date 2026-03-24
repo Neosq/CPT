@@ -271,14 +271,44 @@ local function createHud(blockCount)
         if relTapConn then relTapConn:Disconnect(); relTapConn=nil end
         task.delay(0.05, destroyHud)
         task.spawn(function()
+            -- Count total blocks to place
+            local total = 0
+            for _, d in pairs(blocks) do
+                if not excl[d.name] then total = total + 1 end
+            end
+            -- Create subtitle label
+            local pg = game:GetService("Players").LocalPlayer.PlayerGui
+            local subGui = Instance.new("ScreenGui")
+            subGui.Name = "CPTSubtitle"; subGui.ResetOnSpawn = false
+            subGui.DisplayOrder = 999; subGui.Parent = pg
+            local subLabel = Instance.new("TextLabel")
+            subLabel.Size = UDim2.new(1, 0, 0, 40)
+            subLabel.Position = UDim2.new(0, 0, 0.88, 0)
+            subLabel.BackgroundTransparency = 1
+            subLabel.TextScaled = true
+            subLabel.Font = Enum.Font.GothamBold
+            subLabel.TextStrokeTransparency = 0.5
+            subLabel.TextStrokeColor3 = Color3.fromRGB(0,0,0)
+            subLabel.TextColor3 = Color3.fromRGB(255, 220, 50)
+            subLabel.Text = "Loading... (0/"..total..")"
+            subLabel.Parent = subGui
+
             U.resetSafeOffset()
             local nA=CFrame.new(anchorCF.Position+offset)*(anchorCF-anchorCF.Position)
+            local placed = 0
             for _,d in pairs(blocks) do
                 if not excl[d.name] then
                     if isCS then U.placeOneCS(d,nA) else U.placeOneCP(d,nA) end
+                    placed = placed + 1
+                    subLabel.Text = "Loading... ("..placed.."/"..total..")"
                     task.wait(0.05)
                 end
             end
+            -- Done
+            subLabel.TextColor3 = Color3.fromRGB(85, 255, 100)
+            subLabel.Text = "Done!"
+            task.wait(2)
+            subGui:Destroy()
         end)
     end)
     updateHudMode()
