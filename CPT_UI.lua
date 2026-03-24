@@ -131,11 +131,11 @@ buildsDropdown=SLTab:Dropdown({
         end
     end,
 })
-SLTab:Button({Title="Refresh", Callback=refreshDropdown})
-SLTab:Button({Title="Open 3D Preview", Icon="eye", Callback=function()
-    if not S.selectedBuild then csStatus("Select a build first!"); return end
-    VP.openPreviewGui(S.selectedBuild)
+SLTab:Button({Title="Open 3D Preview", Callback=function()
+    if not S.selectedBuild then csStatus("No build selected"); return end
+    _G.CPT_3DPreview.openPreviewGui(S.selectedBuild)
 end})
+SLTab:Button({Title="Refresh", Callback=refreshDropdown})
 SLTab:Button({Title="Delete Selected", Callback=function()
     if not S.selectedBuild then return end
     local builds=U.loadBuilds()
@@ -161,13 +161,74 @@ SLTab:Slider({Title="Value", Value={Min=0.1,Max=13.5,Default=4.5}, Callback=func
 end})
 refreshDropdown()
 
--- Tools tab
 TLTab:Section({Title="General"})
 TLTab:Toggle({Title="Multi Select (max 5)", State=false, Callback=function(s)
     if _G.PBM then _G.PBM.setMultiSelect(s) end
 end})
 
+TLTab:Section({Title="Shop"})
+
+local shopRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("BlockShopRemote")
+
+local blockItems = {}
+local blockFolder = game:GetService("ReplicatedStorage"):FindFirstChild("Assets")
+    and game:GetService("ReplicatedStorage").Assets:FindFirstChild("BlockShop")
+    and game:GetService("ReplicatedStorage").Assets.BlockShop:FindFirstChild("Models")
+if blockFolder then
+    for _, model in ipairs(blockFolder:GetChildren()) do
+        if model:IsA("Model") then
+            table.insert(blockItems, "Block: "..model.Name)
+        end
+    end
+end
+table.sort(blockItems)
+
+local playerModelItems = {}
+
+local shopItems = {"Nothing"}
+for _, v in ipairs(blockItems) do table.insert(shopItems, v) end
+for _, v in ipairs(playerModelItems) do table.insert(shopItems, "Model: "..v) end
+
+local selectedShopItem = nil
+local shopStatusPara = TLTab:Paragraph({Title="Status", Content="Select an item"})
+local function shopStatus(txt)
+    pcall(function() shopStatusPara:Set({Title="Status", Content=txt}) end)
+end
+
+TLTab:Dropdown({
+    Title="Select Item", Values=shopItems, Default="Nothing",
+    Callback=function(val)
+        if val == "Nothing" then
+            selectedShopItem = nil
+            shopStatus("Nothing selected")
+        elseif val:sub(1,6) == "Block:" then
+            selectedShopItem = {type="Block", name=val:sub(8)}
+            shopStatus("Block: "..val:sub(8))
+        elseif val:sub(1,6) == "Model:" then
+            selectedShopItem = {type="Model", name=val:sub(8)}
+            shopStatus("Model: "..val:sub(8))
+        end
+    end
+})
+
+TLTab:Button({Title="Buy", Callback=function()
+    if not selectedShopItem then shopStatus("Select an item first!"); return end
+    if selectedShopItem.type == "Block" then
+        local ok, err = pcall(function()
+            shopRemote:InvokeServer("BuyBlock", selectedShopItem.name)
+        end)
+        if ok then shopStatus("Bought: "..selectedShopItem.name)
+        else shopStatus("Failed: "..tostring(err)) end
+    elseif selectedShopItem.type == "Model" then
+        local ok, err = pcall(function()
+            shopRemote:InvokeServer("BuyPlayerModel", selectedShopItem.name)
+        end)
+        if ok then shopStatus("Bought model: "..selectedShopItem.name)
+        else shopStatus("Failed: "..tostring(err)) end
+    end
+end})
+
 _G.CopyPasteTool={
     deactivate=P.deactivatePaste,
-    openPreview=VP.openPreviewGui,
+    openPreview=_G.CPT_3DPreview and _G.CPT_3DPreview.openPreviewGui,
 }
