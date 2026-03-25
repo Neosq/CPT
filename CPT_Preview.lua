@@ -295,10 +295,17 @@ local function createHud(blockCount)
 
             U.resetSafeOffset()
             local nA=CFrame.new(anchorCF.Position+offset)*(anchorCF-anchorCF.Position)
+            local sc = (S.scalePct or 100) / 100
             local placed = 0
             for _,d in pairs(blocks) do
                 if not excl[d.name] then
-                    if isCS then U.placeOneCS(d,nA) else U.placeOneCP(d,nA) end
+                    if math.abs(sc - 1.0) > 0.01 then
+                        U.placeOneScaled(d, nA, sc)
+                    elseif isCS then
+                        U.placeOneCS(d, nA)
+                    else
+                        U.placeOneCP(d, nA)
+                    end
                     placed = placed + 1
                     subLabel.Text = "Loading... ("..placed.."/"..total..")"
                     task.wait(0.05)
