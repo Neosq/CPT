@@ -230,3 +230,31 @@ function U.placeOneCS(data, nA)
 end
 
 _G.CPT_Utils = U
+
+function U.placeOneScaled(data, nA, sc)
+    -- Scale position and size of block relative to anchor
+    local t = U.findBlockInRS(data.name); if not t then return end
+    local relCF = data.relCF
+    -- Scale position from anchor
+    local scaledPos = relCF.Position * sc
+    local scaledCF  = CFrame.new(scaledPos) * (relCF - relCF.Position)
+    local tCF       = nA * scaledCF
+    safeOffset = safeOffset + 6
+    local spawnCF = SAFE_SPAWN * CFrame.new(safeOffset, 0, 0)
+    local nb
+    pcall(function() nb = RS.Functions.PlaceBlock:InvokeServer(t, spawnCF, data.brickColor, data.material) end)
+    if not nb then pcall(function() nb = RS.Functions.PlaceBlock:InvokeServer(t, spawnCF) end) end
+    if not nb then task.wait(0.3); nb = U.findNewBlock(data.name, spawnCF.Position) end
+    if not nb then return end
+    pcall(function() RS.Functions.CommitMove:InvokeServer(nb, tCF) end)
+    pcall(function() RS.Functions.PaintBlock:InvokeServer(nb, data.brickColor, data.material) end)
+    -- Scale size via CommitResize
+    if math.abs(sc - 1.0) > 0.01 then
+        task.wait(0.05)
+        local cp = nb:FindFirstChild("ColorPart")
+        if cp then
+            local scaledSize = cp.Size * sc
+            pcall(function() RS.Functions.CommitResize:InvokeServer(nb, {cp, tCF, scaledSize}) end)
+        end
+    end
+end
