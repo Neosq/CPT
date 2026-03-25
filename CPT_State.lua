@@ -21,6 +21,7 @@ _G.CPT_State = {
     excludedBlocks     = {},
     pendingName        = "",
     selectedBuild      = nil,
+    scalePct           = 100,
     handleButtons      = {},
     ringContainers     = {},
     isPressing         = false,
