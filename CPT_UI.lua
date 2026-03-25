@@ -100,6 +100,9 @@ end})
 CPTab:Toggle({Title="Relative Paste", State=false, Callback=function(s)
     S.relativePaste=s
 end})
+CPTab:Slider({Title="Paste Scale %", Value={Min=25,Max=400,Default=100}, Callback=function(v)
+    S.scalePct = math.floor(v)
+end})
 CPTab:Slider({Title="Value", Value={Min=0.1,Max=13.5,Default=4.5}, Callback=function(v)
     S.pasteStep = math.max(v, 0.1)
 end})
@@ -156,20 +159,26 @@ end})
 SLTab:Toggle({Title="Relative Paste", State=false, Callback=function(s)
     S.relativePaste=s
 end})
+SLTab:Slider({Title="Paste Scale %", Value={Min=25,Max=400,Default=100}, Callback=function(v)
+    S.scalePct = math.floor(v)
+end})
 SLTab:Slider({Title="Value", Value={Min=0.1,Max=13.5,Default=4.5}, Callback=function(v)
     S.pasteStep = math.max(v, 0.1)
 end})
 refreshDropdown()
 
+-- Tools tab
 TLTab:Section({Title="General"})
 TLTab:Toggle({Title="Multi Select (max 5)", State=false, Callback=function(s)
     if _G.PBM then _G.PBM.setMultiSelect(s) end
 end})
 
+-- Shop section
 TLTab:Section({Title="Shop"})
 
 local shopRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("BlockShopRemote")
 
+-- Build block list from RS
 local blockItems = {}
 local blockFolder = game:GetService("ReplicatedStorage"):FindFirstChild("Assets")
     and game:GetService("ReplicatedStorage").Assets:FindFirstChild("BlockShop")
@@ -183,8 +192,11 @@ if blockFolder then
 end
 table.sort(blockItems)
 
+-- Player models - unknown path so list manually or leave empty
 local playerModelItems = {}
+-- If you find the folder path add it here, for now empty
 
+-- Combined list with Nothing at top
 local shopItems = {"Nothing"}
 for _, v in ipairs(blockItems) do table.insert(shopItems, v) end
 for _, v in ipairs(playerModelItems) do table.insert(shopItems, "Model: "..v) end
