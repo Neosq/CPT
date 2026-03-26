@@ -232,13 +232,11 @@ end
 _G.CPT_Utils = U
 
 function U.placeOneScaled(data, nA, sc)
-    -- Scale position and size of block relative to anchor
     local t = U.findBlockInRS(data.name); if not t then return end
-    local relCF = data.relCF
-    -- Scale position from anchor
-    local scaledPos = relCF.Position * sc
-    local scaledCF  = CFrame.new(scaledPos) * (relCF - relCF.Position)
-    local tCF       = nA * scaledCF
+    -- Scale position relative to anchor
+    local relCF    = data.relCF
+    local scaledCF = CFrame.new(relCF.Position * sc) * (relCF - relCF.Position)
+    local tCF      = nA * scaledCF
     safeOffset = safeOffset + 6
     local spawnCF = SAFE_SPAWN * CFrame.new(safeOffset, 0, 0)
     local nb
@@ -248,12 +246,62 @@ function U.placeOneScaled(data, nA, sc)
     if not nb then return end
     pcall(function() RS.Functions.CommitMove:InvokeServer(nb, tCF) end)
     pcall(function() RS.Functions.PaintBlock:InvokeServer(nb, data.brickColor, data.material) end)
-    -- Scale size via CommitResize
-    if math.abs(sc - 1.0) > 0.01 then
-        task.wait(0.05)
+    -- CommitResize with scaled parts
+    task.wait(0.05)
+    if data.isResized and data.resizeParts and #data.resizeParts > 0 then
+        -- Resized block: scale each part's relCF position and size
+        local nbPivot = U.getModelPivot(nb)
+        local nbParts = {}
+        for _, desc in ipairs(nb:GetDescendants()) do
+            if desc:IsA("BasePart") and desc.Name ~= "MouseFilterPart" then
+                local relY = nbPivot and (desc.CFrame.Position.Y - nbPivot.Position.Y) or 0
+                local relZ = nbPivot and (desc.CFrame.Position.Z - nbPivot.Position.Z) or 0
+                table.insert(nbParts, {part=desc, relY=relY, relZ=relZ})
+            end
+        end
+        table.sort(nbParts, function(a, b)
+            if a.part.Name ~= b.part.Name then return a.part.Name < b.part.Name end
+            if math.abs(a.relY - b.relY) > 0.01 then return a.relY < b.relY end
+            return a.relZ < b.relZ
+        end)
+        local savedPivotPos = relCF.Position
+        local savedParts = {}
+        for _, rp in ipairs(data.resizeParts) do
+            local relY = rp.relCF.Position.Y - savedPivotPos.Y
+            local relZ = rp.relCF.Position.Z - savedPivotPos.Z
+            table.insert(savedParts, {rp=rp, relY=relY, relZ=relZ})
+        end
+        table.sort(savedParts, function(a, b)
+            if a.rp.name ~= b.rp.name then return a.rp.name < b.rp.name end
+            if math.abs(a.relY - b.relY) > 0.01 then return a.relY < b.relY end
+            return a.relZ < b.relZ
+        end)
+        local args = {}
+        for i, sp in ipairs(savedParts) do
+            local np = nbParts[i]
+            if np then
+                -- Scale both position and size
+                local partRelCF  = sp.rp.relCF
+                local scaledPartCF = CFrame.new(partRelCF.Position * sc) * (partRelCF - partRelCF.Position)
+                table.insert(args, np.part)
+                table.insert(args, nA * scaledPartCF)
+                table.insert(args, sp.rp.size * sc)
+            end
+        end
+        if #args > 0 then
+            pcall(function() RS.Functions.CommitResize:InvokeServer(nb, args) end)
+        end
+    else
+        -- Normal block: just scale ColorPart size
         local cp = nb:FindFirstChild("ColorPart")
-        if cp then
-            local scaledSize = cp.Size * sc
+        if cp and math.abs(sc - 1.0) > 0.01 then
+            local baseSize
+            if type(data.cpSize) == "table" then
+                baseSize = Vector3.new(data.cpSize[1], data.cpSize[2], data.cpSize[3])
+            else
+                baseSize = data.cpSize or cp.Size
+            end
+            local scaledSize = baseSize * sc
             pcall(function() RS.Functions.CommitResize:InvokeServer(nb, {cp, tCF, scaledSize}) end)
         end
     end
