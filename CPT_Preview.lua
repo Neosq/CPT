@@ -45,16 +45,19 @@ end
 local function buildPreview()
     clearPreview()
     if not S.activeBlocks or not S.activeAnchorCF then return end
-    local nA = CFrame.new(S.activeAnchorCF.Position+S.pasteOffset)*(S.activeAnchorCF-S.activeAnchorCF.Position)
-    local s  = Vector3.new(0,0,0)
-    local tr = S.previewTransparent and 0.5 or 0
-    local bm = workspace:FindFirstChild("BuildModel")
+    local sc  = (S.scalePct or 100) / 100
+    local nA  = CFrame.new(S.activeAnchorCF.Position+S.pasteOffset)*(S.activeAnchorCF-S.activeAnchorCF.Position)
+    local s   = Vector3.new(0,0,0)
+    local tr  = S.previewTransparent and 0.5 or 0
+    local bm  = workspace:FindFirstChild("BuildModel")
     for _, data in pairs(S.activeBlocks) do
         if not S.excludedBlocks[data.name] then
             local relCF = S.activeIsCS and U.tableToCF(data.relCF) or data.relCF
-            local tCF   = nA * relCF
+            -- Apply scale to position
+            local scaledRelCF = CFrame.new(relCF.Position * sc) * (relCF - relCF.Position)
+            local tCF   = nA * scaledRelCF
             if not S.activeIsCS and bm then
-                local origCF = S.activeAnchorCF * (S.activeIsCS and U.tableToCF(data.relCF) or data.relCF)
+                local origCF = S.activeAnchorCF * relCF
                 local bestModel, bestDist = nil, math.huge
                 for _, child in pairs(bm:GetChildren()) do
                     if child.Name == data.name then
@@ -83,10 +86,13 @@ local function buildPreview()
                                 if desc.Name == "ColorPart" then
                                     ghost.BrickColor = data.brickColor
                                     ghost.Material   = data.material
-                                    if data.isResized then ghost.Size = data.cpSize end
+                                    if data.isResized then ghost.Size = data.cpSize * sc end
                                 end
                                 local relPart = modelCF:ToObjectSpace(desc.CFrame)
-                                ghost.CFrame = tCF * relPart
+                                -- Scale the part's position relative to block pivot
+                                local scaledPartCF = CFrame.new(relPart.Position * sc) * (relPart - relPart.Position)
+                                ghost.CFrame = tCF * scaledPartCF
+                                ghost.Size   = desc.Size * sc
                                 ghost.Name="CPGhost"; ghost.Parent=workspace
                                 table.insert(S.previewParts, ghost)
                                 s = s + ghost.CFrame.Position
@@ -98,7 +104,7 @@ local function buildPreview()
             end
             local sz = S.activeIsCS and Vector3.new(table.unpack(data.cpSize)) or data.cpSize
             local p  = Instance.new("Part")
-            p.Size=sz; p.CFrame=tCF; p.Anchored=true
+            p.Size=sz*sc; p.CFrame=tCF; p.Anchored=true
             p.CanCollide=false; p.CastShadow=false; p.Transparency=tr
             if S.activeIsCS then
                 local ok,bc   = pcall(function() return BrickColor.new(data.brickColor) end)
