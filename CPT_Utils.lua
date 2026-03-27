@@ -233,10 +233,9 @@ _G.CPT_Utils = U
 
 function U.placeOneScaled(data, nA, sc)
     local t = U.findBlockInRS(data.name); if not t then return end
-    -- Scale position relative to anchor
-    local relCF    = data.relCF
+    local relCF = type(data.relCF)=="table" and U.tableToCF(data.relCF) or data.relCF
     local scaledCF = CFrame.new(relCF.Position * sc) * (relCF - relCF.Position)
-    local tCF      = nA * scaledCF
+    local tCF = nA * scaledCF
     safeOffset = safeOffset + 6
     local spawnCF = SAFE_SPAWN * CFrame.new(safeOffset, 0, 0)
     local nb
@@ -246,10 +245,8 @@ function U.placeOneScaled(data, nA, sc)
     if not nb then return end
     pcall(function() RS.Functions.CommitMove:InvokeServer(nb, tCF) end)
     pcall(function() RS.Functions.PaintBlock:InvokeServer(nb, data.brickColor, data.material) end)
-    -- CommitResize with scaled parts
     task.wait(0.05)
     if data.isResized and data.resizeParts and #data.resizeParts > 0 then
-        -- Resized block: scale each part's relCF position and size
         local nbPivot = U.getModelPivot(nb)
         local nbParts = {}
         for _, desc in ipairs(nb:GetDescendants()) do
@@ -267,9 +264,10 @@ function U.placeOneScaled(data, nA, sc)
         local savedPivotPos = relCF.Position
         local savedParts = {}
         for _, rp in ipairs(data.resizeParts) do
-            local relY = rp.relCF.Position.Y - savedPivotPos.Y
-            local relZ = rp.relCF.Position.Z - savedPivotPos.Z
-            table.insert(savedParts, {rp=rp, relY=relY, relZ=relZ})
+            local rpCF = type(rp.relCF)=="table" and U.tableToCF(rp.relCF) or rp.relCF
+            local relY = rpCF.Position.Y - savedPivotPos.Y
+            local relZ = rpCF.Position.Z - savedPivotPos.Z
+            table.insert(savedParts, {rp=rp, rpCF=rpCF, relY=relY, relZ=relZ})
         end
         table.sort(savedParts, function(a, b)
             if a.rp.name ~= b.rp.name then return a.rp.name < b.rp.name end
@@ -278,31 +276,25 @@ function U.placeOneScaled(data, nA, sc)
         end)
         local args = {}
         for i, sp in ipairs(savedParts) do
-            local np = nbParts[i]
-            if np then
-                -- Scale both position and size
-                local partRelCF  = sp.rp.relCF
-                local scaledPartCF = CFrame.new(partRelCF.Position * sc) * (partRelCF - partRelCF.Position)
-                table.insert(args, np.part)
-                table.insert(args, nA * scaledPartCF)
-                table.insert(args, sp.rp.size * sc)
-            end
+            local np = nbParts[i]; if not np then continue end
+            local scaledPartCF = CFrame.new(sp.rpCF.Position * sc) * (sp.rpCF - sp.rpCF.Position)
+            local rpSize = type(sp.rp.size)=="table"
+                and Vector3.new(sp.rp.size[1], sp.rp.size[2], sp.rp.size[3])
+                or sp.rp.size
+            table.insert(args, np.part)
+            table.insert(args, nA * scaledPartCF)
+            table.insert(args, rpSize * sc)
         end
         if #args > 0 then
             pcall(function() RS.Functions.CommitResize:InvokeServer(nb, args) end)
         end
     else
-        -- Normal block: just scale ColorPart size
         local cp = nb:FindFirstChild("ColorPart")
         if cp and math.abs(sc - 1.0) > 0.01 then
-            local baseSize
-            if type(data.cpSize) == "table" then
-                baseSize = Vector3.new(data.cpSize[1], data.cpSize[2], data.cpSize[3])
-            else
-                baseSize = data.cpSize or cp.Size
-            end
-            local scaledSize = baseSize * sc
-            pcall(function() RS.Functions.CommitResize:InvokeServer(nb, {cp, tCF, scaledSize}) end)
+            local baseSize = type(data.cpSize)=="table"
+                and Vector3.new(data.cpSize[1], data.cpSize[2], data.cpSize[3])
+                or (data.cpSize or cp.Size)
+            pcall(function() RS.Functions.CommitResize:InvokeServer(nb, {cp, tCF, baseSize * sc}) end)
         end
     end
 end
