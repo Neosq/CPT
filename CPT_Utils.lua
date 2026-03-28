@@ -106,6 +106,27 @@ function U.getBlockUnderMouse()
     return part
 end
 
+function U.getHitPosSnapped()
+    local ur = camera:ScreenPointToRay(mouse.X, mouse.Y)
+    local p  = RaycastParams.new(); p.FilterType=Enum.RaycastFilterType.Include
+    local bm = workspace:FindFirstChild("BuildModel"); if not bm then return nil,nil end
+    p.FilterDescendantsInstances={bm}
+    local r = workspace:Raycast(ur.Origin, ur.Direction*500, p)
+    if not r then return nil,nil end
+    local part = r.Instance
+    while part and part.Parent ~= bm do part = part.Parent end
+    if not part then return nil,nil end
+    local GRID = 4.5
+    local hp = r.Position
+    -- Snap hit position to 4.5 grid
+    local snapped = Vector3.new(
+        math.round(hp.X/GRID)*GRID,
+        math.round(hp.Y/GRID)*GRID,
+        math.round(hp.Z/GRID)*GRID
+    )
+    return part, snapped
+end
+
 function U.blockInZone(pos, minB, maxB)
     return pos.X>=minB.X-0.1 and pos.X<=maxB.X+0.1
        and pos.Y>=minB.Y-0.1 and pos.Y<=maxB.Y+0.1
@@ -236,15 +257,19 @@ function U.placeOneScaled(data, nA, sc)
     local relCF = type(data.relCF)=="table" and U.tableToCF(data.relCF) or data.relCF
     local scaledCF = CFrame.new(relCF.Position * sc) * (relCF - relCF.Position)
     local tCF = nA * scaledCF
+    local ok1, bc  = pcall(function() return BrickColor.new(data.brickColor) end)
+    local ok2, mat = pcall(function() return Enum.Material[data.material] end)
+    local brickColor = ok1 and bc  or BrickColor.new(1001)
+    local material   = ok2 and mat or Enum.Material.Plastic
     safeOffset = safeOffset + 6
     local spawnCF = SAFE_SPAWN * CFrame.new(safeOffset, 0, 0)
     local nb
-    pcall(function() nb = RS.Functions.PlaceBlock:InvokeServer(t, spawnCF, data.brickColor, data.material) end)
+    pcall(function() nb = RS.Functions.PlaceBlock:InvokeServer(t, spawnCF, brickColor, material) end)
     if not nb then pcall(function() nb = RS.Functions.PlaceBlock:InvokeServer(t, spawnCF) end) end
     if not nb then task.wait(0.3); nb = U.findNewBlock(data.name, spawnCF.Position) end
     if not nb then return end
     pcall(function() RS.Functions.CommitMove:InvokeServer(nb, tCF) end)
-    pcall(function() RS.Functions.PaintBlock:InvokeServer(nb, data.brickColor, data.material) end)
+    pcall(function() RS.Functions.PaintBlock:InvokeServer(nb, brickColor, material) end)
     task.wait(0.05)
     if data.isResized and data.resizeParts and #data.resizeParts > 0 then
         local nbPivot = U.getModelPivot(nb)
