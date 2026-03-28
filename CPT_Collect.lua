@@ -98,10 +98,23 @@ function C.collectCP()
     local c1,c2=S.cpCorner1,S.cpCorner2
     local minB=Vector3.new(math.min(c1.X,c2.X)-2.4, math.min(c1.Y,c2.Y)-2.4, math.min(c1.Z,c2.Z)-2.4)
     local maxB=Vector3.new(math.max(c1.X,c2.X)+2.4, math.max(c1.Y,c2.Y)+2.4, math.max(c1.Z,c2.Z)+2.4)
+    -- Check if block's AABB overlaps with zone (handles resized blocks)
+    local function blockOverlapsZone(block)
+        local zp = U.getZonePos(block)
+        if not zp then return false end
+        -- First try center point check
+        if U.blockInZone(zp, minB, maxB) then return true end
+        -- For resized blocks - check if any part of AABB overlaps zone
+        local sz = U.getBlockSize(block)
+        local bMin = zp - sz*0.5
+        local bMax = zp + sz*0.5
+        return bMin.X<=maxB.X and bMax.X>=minB.X
+           and bMin.Y<=maxB.Y and bMax.Y>=minB.Y
+           and bMin.Z<=maxB.Z and bMax.Z>=minB.Z
+    end
     local raw={}
     for _, block in pairs(bm:GetChildren()) do
-        local zp=U.getZonePos(block)
-        if zp and U.blockInZone(zp,minB,maxB) then
+        if blockOverlapsZone(block) then
             local pv=U.getModelPivot(block); if pv then table.insert(raw,{block=block,pivotCF=pv}) end
         end
     end
@@ -147,10 +160,18 @@ function C.collectCS(c1, c2)
     if not bm or not c1 or not c2 then return blocks,nil end
     local minB=Vector3.new(math.min(c1.X,c2.X)-2.4, math.min(c1.Y,c2.Y)-2.4, math.min(c1.Z,c2.Z)-2.4)
     local maxB=Vector3.new(math.max(c1.X,c2.X)+2.4, math.max(c1.Y,c2.Y)+2.4, math.max(c1.Z,c2.Z)+2.4)
+    local function blockOverlapsZone(block)
+        local zp = U.getZonePos(block); if not zp then return false end
+        if U.blockInZone(zp, minB, maxB) then return true end
+        local sz = U.getBlockSize(block)
+        local bMin = zp - sz*0.5; local bMax = zp + sz*0.5
+        return bMin.X<=maxB.X and bMax.X>=minB.X
+           and bMin.Y<=maxB.Y and bMax.Y>=minB.Y
+           and bMin.Z<=maxB.Z and bMax.Z>=minB.Z
+    end
     local raw={}
     for _,block in pairs(bm:GetChildren()) do
-        local zp=U.getZonePos(block)
-        if zp and U.blockInZone(zp,minB,maxB) then
+        if blockOverlapsZone(block) then
             local pv=U.getModelPivot(block); if pv then table.insert(raw,{block=block,pivotCF=pv}) end
         end
     end
