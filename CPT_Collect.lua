@@ -51,7 +51,7 @@ UIS.InputBegan:Connect(function(input,gpe)
     if input.UserInputType~=Enum.UserInputType.MouseButton1 and
        input.UserInputType~=Enum.UserInputType.Touch then return end
     if S.cpSelectingCorner==0 then return end
-    local model, snappedPos = U.getHitPosSnapped()
+    local model, snappedPos = U.getHitPosSnapped(input.Position.X, input.Position.Y)
     if not model or not snappedPos then return end
     local adorn=model:FindFirstChild("ColorPart") or model:FindFirstChild("MouseFilterPart") or model
     if S.cpSelectingCorner==1 then
