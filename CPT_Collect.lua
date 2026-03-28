@@ -51,16 +51,16 @@ UIS.InputBegan:Connect(function(input,gpe)
     if input.UserInputType~=Enum.UserInputType.MouseButton1 and
        input.UserInputType~=Enum.UserInputType.Touch then return end
     if S.cpSelectingCorner==0 then return end
-    local model=U.getBlockUnderMouse(); if not model then return end
-    local zp=U.getZonePos(model); if not zp then return end
+    local model, snappedPos = U.getHitPosSnapped()
+    if not model or not snappedPos then return end
     local adorn=model:FindFirstChild("ColorPart") or model:FindFirstChild("MouseFilterPart") or model
     if S.cpSelectingCorner==1 then
-        S.cpCorner1=zp; if cpPos1Box then cpPos1Box:Destroy() end
+        S.cpCorner1=snappedPos; if cpPos1Box then cpPos1Box:Destroy() end
         cpPos1Box=Instance.new("SelectionBox"); cpPos1Box.Color3=Color3.fromRGB(55,185,100)
         cpPos1Box.LineThickness=0.07; cpPos1Box.Adornee=adorn; cpPos1Box.Parent=workspace
         S.cpSelectingCorner=0; updateRegionBox(S.cpCorner1, S.cpCorner2)
     elseif S.cpSelectingCorner==2 then
-        S.cpCorner2=zp; if cpPos2Box then cpPos2Box:Destroy() end
+        S.cpCorner2=snappedPos; if cpPos2Box then cpPos2Box:Destroy() end
         cpPos2Box=Instance.new("SelectionBox"); cpPos2Box.Color3=Color3.fromRGB(200,55,55)
         cpPos2Box.LineThickness=0.07; cpPos2Box.Adornee=adorn; cpPos2Box.Parent=workspace
         S.cpSelectingCorner=0; updateRegionBox(S.cpCorner1, S.cpCorner2)
