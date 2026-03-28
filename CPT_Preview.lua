@@ -86,13 +86,11 @@ local function buildPreview()
                                 if desc.Name == "ColorPart" then
                                     ghost.BrickColor = data.brickColor
                                     ghost.Material   = data.material
-                                    if data.isResized then ghost.Size = data.cpSize * sc end
                                 end
                                 local relPart = modelCF:ToObjectSpace(desc.CFrame)
-                                -- Scale the part's position relative to block pivot
                                 local scaledPartCF = CFrame.new(relPart.Position * sc) * (relPart - relPart.Position)
                                 ghost.CFrame = tCF * scaledPartCF
-                                ghost.Size   = desc.Size * sc
+                                ghost.Size = desc.Size * sc
                                 ghost.Name="CPGhost"; ghost.Parent=workspace
                                 table.insert(S.previewParts, ghost)
                                 s = s + ghost.CFrame.Position
