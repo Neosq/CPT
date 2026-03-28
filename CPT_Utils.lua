@@ -106,8 +106,9 @@ function U.getBlockUnderMouse()
     return part
 end
 
-function U.getHitPosSnapped()
-    local ur = camera:ScreenPointToRay(mouse.X, mouse.Y)
+function U.getHitPosSnapped(x, y)
+    x = x or mouse.X; y = y or mouse.Y
+    local ur = camera:ScreenPointToRay(x, y)
     local p  = RaycastParams.new(); p.FilterType=Enum.RaycastFilterType.Include
     local bm = workspace:FindFirstChild("BuildModel"); if not bm then return nil,nil end
     p.FilterDescendantsInstances={bm}
@@ -314,12 +315,32 @@ function U.placeOneScaled(data, nA, sc)
             pcall(function() RS.Functions.CommitResize:InvokeServer(nb, args) end)
         end
     else
-        local cp = nb:FindFirstChild("ColorPart")
-        if cp and math.abs(sc - 1.0) > 0.01 then
-            local baseSize = type(data.cpSize)=="table"
-                and Vector3.new(data.cpSize[1], data.cpSize[2], data.cpSize[3])
-                or (data.cpSize or cp.Size)
-            pcall(function() RS.Functions.CommitResize:InvokeServer(nb, {cp, tCF, baseSize * sc}) end)
+        if math.abs(sc - 1.0) > 0.01 then
+            local cp = nb:FindFirstChild("ColorPart")
+            if cp then
+                local baseSize = type(data.cpSize)=="table"
+                    and Vector3.new(data.cpSize[1], data.cpSize[2], data.cpSize[3])
+                    or (data.cpSize or cp.Size)
+                pcall(function() RS.Functions.CommitResize:InvokeServer(nb, {cp, tCF, baseSize * sc}) end)
+            else
+                -- Multi-part block without ColorPart (e.g. WindowBlockThin)
+                -- Scale each visible part relative to pivot
+                local nbPivot = U.getModelPivot(nb)
+                local args = {}
+                for _, desc in ipairs(nb:GetDescendants()) do
+                    if desc:IsA("BasePart") and desc.Name ~= "MouseFilterPart" then
+                        local relCFpart = nbPivot and CFrame.new(
+                            (desc.CFrame.Position - nbPivot.Position) * sc + nbPivot.Position
+                        ) * (desc.CFrame - desc.CFrame.Position) or desc.CFrame
+                        table.insert(args, desc)
+                        table.insert(args, relCFpart)
+                        table.insert(args, desc.Size * sc)
+                    end
+                end
+                if #args > 0 then
+                    pcall(function() RS.Functions.CommitResize:InvokeServer(nb, args) end)
+                end
+            end
         end
     end
 end
