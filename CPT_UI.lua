@@ -31,28 +31,6 @@ local function csStatus(txt)
 end
 CPTab:Section({Title="Build"})
 cpStatusPara=CPTab:Paragraph({Title="Status",Content="Pick Pos 1"})
-
-local markers = {}
-local function placeMarker()
-    local camera = workspace.CurrentCamera
-    local cf = camera.CFrame * CFrame.new(0, 0, -8)
-    local bm = workspace:FindFirstChild("BuildModel")
-    if not bm then cpStatus("No BuildModel!"); return end
-    local p = Instance.new("Part")
-    p.Size = Vector3.new(4.5,4.5,4.5)
-    p.CFrame = CFrame.new(math.round(cf.Position.X/4.5)*4.5, math.round(cf.Position.Y/4.5)*4.5, math.round(cf.Position.Z/4.5)*4.5)
-    p.Anchored = true; p.CanCollide = false
-    p.BrickColor = BrickColor.new("Bright yellow")
-    p.Material = Enum.Material.Neon
-    p.Transparency = 0.5
-    p.Name = "CPMarker"; p.Parent = bm
-    local sb = Instance.new("SelectionBox"); sb.Color3=Color3.fromRGB(255,220,0)
-    sb.LineThickness=0.06; sb.Adornee=p; sb.Parent=workspace
-    table.insert(markers, {part=p, box=sb})
-    cpStatus("Marker placed — tap it for Pos")
-end
-
-CPTab:Button({Title="Place Marker", Callback=placeMarker})
 CPTab:Button({Title="Set Pos 1", Callback=function()
     S.cpSelectingCorner=1; cpStatus("Click Pos 1 block...")
 end})
@@ -71,11 +49,6 @@ CPTab:Button({Title="Reset", Callback=function()
     S.cpCorner1=nil; S.cpCorner2=nil; S.cpCopiedBlocks={}; S.cpSelectingCorner=0; S.cpAnchorCF=nil
     C.clearRegionBox(); C.clearPos1Box(); C.clearPos2Box()
     P.deactivatePaste()
-    for _, m in ipairs(markers) do
-        if m.box and m.box.Parent then m.box:Destroy() end
-        if m.part and m.part.Parent then m.part:Destroy() end
-    end
-    markers = {}
     cpStatus("Pick Pos 1")
 end})
 CPTab:Button({Title="Delete Zone", Callback=function()
