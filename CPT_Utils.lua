@@ -117,14 +117,30 @@ function U.getHitPosSnapped(x, y)
     local part = r.Instance
     while part and part.Parent ~= bm do part = part.Parent end
     if not part then return nil,nil end
+    -- Get the model's pivot position to use as grid reference
+    local ref = part:FindFirstChild("ColorPart")
+             or part:FindFirstChild("MouseFilterPart")
+             or part:FindFirstChildWhichIsA("BasePart")
     local GRID = 4.5
     local hp = r.Position
-    -- Snap hit position to 4.5 grid
-    local snapped = Vector3.new(
-        math.round(hp.X/GRID)*GRID,
-        math.round(hp.Y/GRID)*GRID,
-        math.round(hp.Z/GRID)*GRID
-    )
+    local snapped
+    if ref then
+        -- Snap relative to block's own position so grid aligns with block edges
+        local origin = ref.Position
+        local rel = hp - origin
+        local snappedRel = Vector3.new(
+            math.round(rel.X/GRID)*GRID,
+            math.round(rel.Y/GRID)*GRID,
+            math.round(rel.Z/GRID)*GRID
+        )
+        snapped = origin + snappedRel
+    else
+        snapped = Vector3.new(
+            math.round(hp.X/GRID)*GRID,
+            math.round(hp.Y/GRID)*GRID,
+            math.round(hp.Z/GRID)*GRID
+        )
+    end
     return part, snapped
 end
 
