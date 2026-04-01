@@ -47,13 +47,50 @@ RunService.Heartbeat:Connect(function()
 end)
 
 local cpPos1Marker, cpPos2Marker = nil, nil
-local function makeMarker(pos, color)
-    local p = Instance.new("Part")
-    p.Size=Vector3.new(1,1,1); p.CFrame=CFrame.new(pos)
-    p.Anchored=true; p.CanCollide=false; p.CastShadow=false
-    p.BrickColor=BrickColor.new(color); p.Material=Enum.Material.Neon
-    p.Transparency=0.3; p.Shape=Enum.PartType.Ball; p.Parent=workspace
-    return p
+local markerList = {}  -- stores placed preview blocks {part, box}
+local MARKER_SIZE = Vector3.new(4.5, 4.5, 4.5)
+
+local function destroyAllMarkers()
+    for _, m in ipairs(markerList) do
+        if m.part and m.part.Parent then m.part:Destroy() end
+        if m.box  and m.box.Parent  then m.box:Destroy()  end
+    end
+    markerList = {}
+end
+
+function C.placeMarker()
+    local camera = workspace.CurrentCamera
+    local bm = workspace:FindFirstChild("BuildModel"); if not bm then return end
+    local cf = camera.CFrame * CFrame.new(0, 0, -9)
+    local snappedPos = Vector3.new(
+        math.round(cf.Position.X/4.5)*4.5,
+        math.round(cf.Position.Y/4.5)*4.5,
+        math.round(cf.Position.Z/4.5)*4.5
+    )
+    -- Max 2 markers: if already 2, move oldest to new position
+    if #markerList >= 2 then
+        local oldest = markerList[1]
+        oldest.part.CFrame = CFrame.new(snappedPos)
+        table.remove(markerList, 1)
+        table.insert(markerList, oldest)
+    else
+        local colors = {Color3.fromRGB(55,185,100), Color3.fromRGB(200,55,55)}
+        local brickColors = {"Bright green", "Bright red"}
+        local idx = #markerList + 1
+        local p = Instance.new("Part")
+        p.Size=MARKER_SIZE; p.CFrame=CFrame.new(snappedPos)
+        p.Anchored=true; p.CanCollide=false; p.CastShadow=false
+        p.BrickColor=BrickColor.new(brickColors[idx])
+        p.Material=Enum.Material.Neon; p.Transparency=0.5
+        p.Name="CPMarker"; p.Parent=bm
+        local sb=Instance.new("SelectionBox"); sb.Color3=colors[idx]
+        sb.LineThickness=0.07; sb.Adornee=p; sb.Parent=workspace
+        table.insert(markerList, {part=p, box=sb})
+    end
+end
+
+function C.clearMarkers()
+    destroyAllMarkers()
 end
 
 UIS.InputBegan:Connect(function(input,gpe)
@@ -61,35 +98,25 @@ UIS.InputBegan:Connect(function(input,gpe)
     if input.UserInputType~=Enum.UserInputType.MouseButton1 and
        input.UserInputType~=Enum.UserInputType.Touch then return end
     if S.cpSelectingCorner==0 then return end
-    local model, snappedPos = U.getHitPosSnapped(input.Position.X, input.Position.Y)
-    if not model or not snappedPos then return end
+    local model=U.getBlockUnderMouse(); if not model then return end
+    local zp=U.getZonePos(model); if not zp then return end
     local adorn=model:FindFirstChild("ColorPart") or model:FindFirstChild("MouseFilterPart") or model
     if S.cpSelectingCorner==1 then
-        S.cpCorner1=snappedPos; if cpPos1Box then cpPos1Box:Destroy() end
-        if cpPos1Marker then cpPos1Marker:Destroy() end
+        S.cpCorner1=zp; if cpPos1Box then cpPos1Box:Destroy() end
         cpPos1Box=Instance.new("SelectionBox"); cpPos1Box.Color3=Color3.fromRGB(55,185,100)
         cpPos1Box.LineThickness=0.07; cpPos1Box.Adornee=adorn; cpPos1Box.Parent=workspace
-        cpPos1Marker=makeMarker(snappedPos,"Bright green")
         S.cpSelectingCorner=0; updateRegionBox(S.cpCorner1, S.cpCorner2)
     elseif S.cpSelectingCorner==2 then
-        S.cpCorner2=snappedPos; if cpPos2Box then cpPos2Box:Destroy() end
-        if cpPos2Marker then cpPos2Marker:Destroy() end
+        S.cpCorner2=zp; if cpPos2Box then cpPos2Box:Destroy() end
         cpPos2Box=Instance.new("SelectionBox"); cpPos2Box.Color3=Color3.fromRGB(200,55,55)
         cpPos2Box.LineThickness=0.07; cpPos2Box.Adornee=adorn; cpPos2Box.Parent=workspace
-        cpPos2Marker=makeMarker(snappedPos,"Bright red")
         S.cpSelectingCorner=0; updateRegionBox(S.cpCorner1, S.cpCorner2)
     end
 end)
 
 function C.clearRegionBox() clearRegionBox() end
-function C.clearPos1Box()
-    if cpPos1Box then cpPos1Box:Destroy(); cpPos1Box=nil end
-    if cpPos1Marker then cpPos1Marker:Destroy(); cpPos1Marker=nil end
-end
-function C.clearPos2Box()
-    if cpPos2Box then cpPos2Box:Destroy(); cpPos2Box=nil end
-    if cpPos2Marker then cpPos2Marker:Destroy(); cpPos2Marker=nil end
-end
+function C.clearPos1Box() if cpPos1Box then cpPos1Box:Destroy(); cpPos1Box=nil end end
+function C.clearPos2Box() if cpPos2Box then cpPos2Box:Destroy(); cpPos2Box=nil end end
 
 function C.collectCP()
     S.cpCopiedBlocks={}; S.cpAnchorCF=nil
