@@ -10,6 +10,7 @@ _G.CPT_State = {
     previewCenter      = Vector3.new(0,0,0),
     pasteOffset        = Vector3.new(0,0,0),
     pasteStep          = 4.5,
+    dragSens           = 0.08,
     previewTransparent = false,
     rotateMode         = false,
     relativePaste      = false,
