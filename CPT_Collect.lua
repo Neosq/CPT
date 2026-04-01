@@ -52,8 +52,8 @@ local MARKER_SIZE = Vector3.new(4.5, 4.5, 4.5)
 
 local function destroyAllMarkers()
     for _, m in ipairs(markerList) do
-        if m.part and m.part.Parent then m.part:Destroy() end
-        if m.box  and m.box.Parent  then m.box:Destroy()  end
+        if m.model and m.model.Parent then m.model:Destroy() end
+        if m.box   and m.box.Parent   then m.box:Destroy()   end
     end
     markerList = {}
 end
@@ -67,25 +67,39 @@ function C.placeMarker()
         math.round(cf.Position.Y/4.5)*4.5,
         math.round(cf.Position.Z/4.5)*4.5
     )
-    -- Max 2 markers: if already 2, move oldest to new position
     if #markerList >= 2 then
         local oldest = markerList[1]
-        oldest.part.CFrame = CFrame.new(snappedPos)
+        -- Move the model
+        if oldest.model and oldest.model.Parent then
+            oldest.model:PivotTo(CFrame.new(snappedPos))
+            local cp = oldest.model:FindFirstChild("ColorPart")
+            if cp then cp.CFrame = CFrame.new(snappedPos) end
+            local mfp = oldest.model:FindFirstChild("MouseFilterPart")
+            if mfp then mfp.CFrame = CFrame.new(snappedPos) end
+        end
         table.remove(markerList, 1)
         table.insert(markerList, oldest)
     else
         local colors = {Color3.fromRGB(55,185,100), Color3.fromRGB(200,55,55)}
         local brickColors = {"Bright green", "Bright red"}
         local idx = #markerList + 1
-        local p = Instance.new("Part")
-        p.Size=MARKER_SIZE; p.CFrame=CFrame.new(snappedPos)
-        p.Anchored=true; p.CanCollide=false; p.CastShadow=false
-        p.BrickColor=BrickColor.new(brickColors[idx])
-        p.Material=Enum.Material.Neon; p.Transparency=0.5
-        p.Name="CPMarker"; p.Parent=bm
-        local sb=Instance.new("SelectionBox"); sb.Color3=colors[idx]
-        sb.LineThickness=0.07; sb.Adornee=p; sb.Parent=workspace
-        table.insert(markerList, {part=p, box=sb})
+        -- Wrap in Model so MoveTool can grab it
+        local model = Instance.new("Model"); model.Name = "CPMarker"; model.Parent = bm
+        local cp = Instance.new("Part")
+        cp.Name = "ColorPart"; cp.Size = Vector3.new(4.5,4.5,4.5)
+        cp.CFrame = CFrame.new(snappedPos)
+        cp.Anchored = true; cp.CanCollide = false; cp.CastShadow = false
+        cp.BrickColor = BrickColor.new(brickColors[idx])
+        cp.Material = Enum.Material.Neon; cp.Transparency = 0.4
+        cp.Parent = model
+        local mfp = Instance.new("Part")
+        mfp.Name = "MouseFilterPart"; mfp.Size = Vector3.new(4.5,4.5,4.5)
+        mfp.CFrame = CFrame.new(snappedPos)
+        mfp.Anchored = true; mfp.CanCollide = false; mfp.Transparency = 1
+        mfp.Parent = model
+        local sb = Instance.new("SelectionBox"); sb.Color3 = colors[idx]
+        sb.LineThickness = 0.07; sb.Adornee = cp; sb.Parent = workspace
+        table.insert(markerList, {model=model, box=sb})
     end
 end
 
