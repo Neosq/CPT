@@ -31,6 +31,10 @@ local function csStatus(txt)
 end
 CPTab:Section({Title="Build"})
 cpStatusPara=CPTab:Paragraph({Title="Status",Content="Pick Pos 1"})
+CPTab:Button({Title="Place Marker", Callback=function()
+    C.placeMarker()
+    cpStatus("Marker placed (max 2)")
+end})
 CPTab:Button({Title="Set Pos 1", Callback=function()
     S.cpSelectingCorner=1; cpStatus("Click Pos 1 block...")
 end})
@@ -47,7 +51,7 @@ CPTab:Button({Title="Copy Zone", Callback=function()
 end})
 CPTab:Button({Title="Reset", Callback=function()
     S.cpCorner1=nil; S.cpCorner2=nil; S.cpCopiedBlocks={}; S.cpSelectingCorner=0; S.cpAnchorCF=nil
-    C.clearRegionBox(); C.clearPos1Box(); C.clearPos2Box()
+    C.clearRegionBox(); C.clearPos1Box(); C.clearPos2Box(); C.clearMarkers()
     P.deactivatePaste()
     cpStatus("Pick Pos 1")
 end})
@@ -90,6 +94,9 @@ CPTab:Button({Title="Save to File", Callback=function()
     S.pendingName=""
 end})
 CPTab:Section({Title="Other"})
+CPTab:Button({Title="Undo History", Callback=function()
+    if _G.CPT_Undo then _G.CPT_Undo.openGui() end
+end})
 CPTab:Dropdown({Title="Handle Mode", Values={"Move","Rotate"}, Default="Move", Callback=function(v)
     S.rotateMode=v=="Rotate"
     updateHudMode()
@@ -99,13 +106,24 @@ CPTab:Toggle({Title="Transparent Preview", State=false, Callback=function(s)
 end})
 CPTab:Toggle({Title="Relative Paste", State=false, Callback=function(s)
     S.relativePaste=s
+    if S.pasteVisible then
+        if s then
+            P.clearHandles(); P.startRelPasteListen()
+        else
+            P.stopRelPasteListen(); P.spawnHandles()
+        end
+        P.updateHudMode()
+    end
 end})
-CPTab:Slider({Title="Paste Scale %", Value={Min=25,Max=400,Default=100}, Callback=function(v)
+CPTab:Slider({Title="Paste Scale %", Value={Min=10,Max=400,Default=100}, Callback=function(v)
     S.scalePct = math.floor(v)
     buildPreview()
 end})
 CPTab:Slider({Title="Value", Value={Min=0.1,Max=13.5,Default=4.5}, Callback=function(v)
     S.pasteStep = math.max(v, 0.1)
+end})
+CPTab:Slider({Title="Drag Speed", Value={Min=1,Max=10,Default=1}, Callback=function(v)
+    S.dragSens = 0.08 * v
 end})
 SLTab:Section({Title="Structure Loader"})
 csStatusPara=SLTab:Paragraph({Title="Status",Content="Select a build"})
@@ -150,6 +168,9 @@ SLTab:Button({Title="Delete Selected", Callback=function()
     csStatus("Deleted"); refreshDropdown()
 end})
 SLTab:Section({Title="Other"})
+SLTab:Button({Title="Undo History", Callback=function()
+    if _G.CPT_Undo then _G.CPT_Undo.openGui() end
+end})
 SLTab:Dropdown({Title="Handle Mode", Values={"Move","Rotate"}, Default="Move", Callback=function(v)
     S.rotateMode=v=="Rotate"
     updateHudMode()
@@ -159,13 +180,24 @@ SLTab:Toggle({Title="Transparent Preview", State=false, Callback=function(s)
 end})
 SLTab:Toggle({Title="Relative Paste", State=false, Callback=function(s)
     S.relativePaste=s
+    if S.pasteVisible then
+        if s then
+            P.clearHandles(); P.startRelPasteListen()
+        else
+            P.stopRelPasteListen(); P.spawnHandles()
+        end
+        P.updateHudMode()
+    end
 end})
-SLTab:Slider({Title="Paste Scale %", Value={Min=25,Max=400,Default=100}, Callback=function(v)
+SLTab:Slider({Title="Paste Scale %", Value={Min=10,Max=400,Default=100}, Callback=function(v)
     S.scalePct = math.floor(v)
     buildPreview()
 end})
 SLTab:Slider({Title="Value", Value={Min=0.1,Max=13.5,Default=4.5}, Callback=function(v)
     S.pasteStep = math.max(v, 0.1)
+end})
+SLTab:Slider({Title="Drag Speed", Value={Min=1,Max=10,Default=1}, Callback=function(v)
+    S.dragSens = 0.08 * v
 end})
 refreshDropdown()
 
