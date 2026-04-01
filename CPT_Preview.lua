@@ -48,69 +48,27 @@ local function buildPreview()
     local sc  = (S.scalePct or 100) / 100
     local nA  = CFrame.new(S.activeAnchorCF.Position+S.pasteOffset)*(S.activeAnchorCF-S.activeAnchorCF.Position)
     local s   = Vector3.new(0,0,0)
-    local tr  = S.previewTransparent and 0.5 or 0
-    local bm  = workspace:FindFirstChild("BuildModel")
+    local tr  = S.previewTransparent and 0.6 or 0.35
     for _, data in pairs(S.activeBlocks) do
         if not S.excludedBlocks[data.name] then
             local relCF = S.activeIsCS and U.tableToCF(data.relCF) or data.relCF
-            -- Apply scale to position
             local scaledRelCF = CFrame.new(relCF.Position * sc) * (relCF - relCF.Position)
-            local tCF   = nA * scaledRelCF
-            if not S.activeIsCS and bm then
-                local origCF = S.activeAnchorCF * relCF
-                local bestModel, bestDist = nil, math.huge
-                for _, child in pairs(bm:GetChildren()) do
-                    if child.Name == data.name then
-                        local pv = U.getModelPivot(child)
-                        if pv then
-                            local d = (pv.Position - origCF.Position).Magnitude
-                            if d < bestDist then bestDist=d; bestModel=child end
-                        end
-                    end
-                end
-                if bestModel then
-                    local modelCF = U.getModelPivot(bestModel)
-                    if modelCF then
-                        for _, desc in ipairs(bestModel:GetDescendants()) do
-                            if desc:IsA("BasePart") and desc.Name ~= "MouseFilterPart" then
-                                if desc.Transparency >= 1 then continue end
-                                local ghost = desc:Clone()
-                                for _, child in ipairs(ghost:GetChildren()) do
-                                    if not (child:IsA("SpecialMesh") or child:IsA("SurfaceAppearance")
-                                        or child:IsA("Decal") or child:IsA("Texture")) then
-                                        child:Destroy()
-                                    end
-                                end
-                                ghost.Anchored=true; ghost.CanCollide=false
-                                ghost.CastShadow=false; ghost.Transparency=tr
-                                if desc.Name == "ColorPart" then
-                                    ghost.BrickColor = data.brickColor
-                                    ghost.Material   = data.material
-                                end
-                                local relPart = modelCF:ToObjectSpace(desc.CFrame)
-                                local scaledPartCF = CFrame.new(relPart.Position * sc) * (relPart - relPart.Position)
-                                ghost.CFrame = tCF * scaledPartCF
-                                ghost.Size = desc.Size * sc
-                                ghost.Name="CPGhost"; ghost.Parent=workspace
-                                table.insert(S.previewParts, ghost)
-                                s = s + ghost.CFrame.Position
-                            end
-                        end
-                        continue
-                    end
-                end
-            end
+            local tCF = nA * scaledRelCF
             local sz = S.activeIsCS and Vector3.new(table.unpack(data.cpSize)) or data.cpSize
-            local p  = Instance.new("Part")
+            local p = Instance.new("Part")
             p.Size=sz*sc; p.CFrame=tCF; p.Anchored=true
             p.CanCollide=false; p.CastShadow=false; p.Transparency=tr
-            if S.activeIsCS then
-                local ok,bc   = pcall(function() return BrickColor.new(data.brickColor) end)
-                local ok2,mat = pcall(function() return Enum.Material[data.material] end)
-                p.BrickColor=ok and bc or BrickColor.new(1001)
-                p.Material=ok2 and mat or Enum.Material.Plastic
+            if typeof(data.brickColor)=="BrickColor" then
+                p.BrickColor=data.brickColor
             else
-                p.BrickColor=data.brickColor; p.Material=data.material
+                local ok,bc=pcall(function() return BrickColor.new(data.brickColor) end)
+                p.BrickColor=ok and bc or BrickColor.new(1001)
+            end
+            if typeof(data.material)=="EnumItem" then
+                p.Material=data.material
+            else
+                local ok,mat=pcall(function() return Enum.Material[data.material] end)
+                p.Material=ok and mat or Enum.Material.Plastic
             end
             p.Name="CPGhost"; p.Parent=workspace
             table.insert(S.previewParts, p); s=s+tCF.Position
@@ -301,19 +259,26 @@ local function createHud(blockCount)
             local nA=CFrame.new(anchorCF.Position+offset)*(anchorCF-anchorCF.Position)
             local sc = (S.scalePct or 100) / 100
             local placed = 0
+            local placedBlocks = {}
             for _,d in pairs(blocks) do
                 if not excl[d.name] then
+                    local nb
                     if math.abs(sc - 1.0) > 0.01 then
-                        U.placeOneScaled(d, nA, sc)
+                        nb = U.placeOneScaled(d, nA, sc)
                     elseif isCS then
-                        U.placeOneCS(d, nA)
+                        nb = U.placeOneCS(d, nA)
                     else
-                        U.placeOneCP(d, nA)
+                        nb = U.placeOneCP(d, nA)
                     end
+                    if nb then table.insert(placedBlocks, nb) end
                     placed = placed + 1
                     subLabel.Text = "Loading... ("..placed.."/"..total..")"
                     task.wait(0.05)
                 end
+            end
+            -- Register in Undo history
+            if #placedBlocks > 0 and _G.CPT_Undo then
+                _G.CPT_Undo.register(placedBlocks)
             end
             -- Done
             subLabel.TextColor3 = Color3.fromRGB(85, 255, 100)
@@ -470,7 +435,7 @@ UIS.InputChanged:Connect(function(input)
        input.UserInputType~=Enum.UserInputType.Touch then return end
     local delta=Vector2.new(input.Position.X,input.Position.Y)-S.dragStartScreen
     local proj=delta:Dot(S.cachedScreenDir)
-    local total=math.floor(proj*S.DRAG_SENS/S.pasteStep)
+    local total=math.floor(proj*(S.dragSens or S.DRAG_SENS or 0.08)/S.pasteStep)
     local diff=total-S.lastMoveSteps
     if diff~=0 then
         S.lastMoveSteps=total
@@ -496,12 +461,18 @@ UIS.InputEnded:Connect(function(input)
     S.activeHandleBtn=nil; S.activeTouchId=nil
 end)
 
-P.screenGui       = screenGui
-P.buildPreview    = buildPreview
-P.clearPreview    = clearPreview
-P.clearHandles    = clearHandlesFunc
-P.activatePaste   = activatePaste
-P.deactivatePaste = deactivatePaste
-P.updateHudMode   = updateHudMode
+P.screenGui          = screenGui
+P.buildPreview       = buildPreview
+P.clearPreview       = clearPreview
+P.clearHandles       = clearHandlesFunc
+P.activatePaste      = activatePaste
+P.deactivatePaste    = deactivatePaste
+P.updateHudMode      = updateHudMode
+P.spawnHandles       = spawnHandlesFunc
+P.startRelPasteListen= function() startRelPasteListen() end
+P.stopRelPasteListen = function()
+    if relTapConn then relTapConn:Disconnect(); relTapConn=nil end
+    S.relPasteWaiting=false
+end
 
 _G.CPT_Preview = P
