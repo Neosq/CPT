@@ -23,6 +23,7 @@ _G.CPT_State = {
     pendingName        = "",
     selectedBuild      = nil,
     scalePct           = 100,
+    pasteInPlace       = false,
     handleButtons      = {},
     ringContainers     = {},
     isPressing         = false,
