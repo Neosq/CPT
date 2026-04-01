@@ -344,6 +344,17 @@ local function activatePaste(blocks, anchorCF, isCS)
     createHud(#blocks)
 end
 
+local function activatePasteInPlace(blocks, anchorCF, isCS)
+    clearPreview(); clearHandlesFunc()
+    S.activeBlocks=blocks; S.activeAnchorCF=anchorCF; S.activeIsCS=isCS
+    S.excludedBlocks={}; S.relPasteWaiting=false
+    S.pasteOffset=Vector3.new(0,0,0)
+    S.pasteVisible=true
+    buildPreview()
+    if not S.relativePaste then spawnHandlesFunc() else startRelPasteListen() end
+    createHud(#blocks)
+end
+
 deactivatePaste = function()
     clearPreview(); clearHandlesFunc()
     S.activeBlocks=nil; S.activeAnchorCF=nil
@@ -465,7 +476,8 @@ P.screenGui          = screenGui
 P.buildPreview       = buildPreview
 P.clearPreview       = clearPreview
 P.clearHandles       = clearHandlesFunc
-P.activatePaste      = activatePaste
+P.activatePaste        = activatePaste
+P.activatePasteInPlace = activatePasteInPlace
 P.deactivatePaste    = deactivatePaste
 P.updateHudMode      = updateHudMode
 P.spawnHandles       = spawnHandlesFunc
